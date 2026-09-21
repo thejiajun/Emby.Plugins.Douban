@@ -1,0 +1,38 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Build
+        run: dotnet build Emby.Plugins.Douban.csproj -c Debug -o out
+
+      - name: Check the plugin only claims supported Douban app versions
+        run: |
+          if grep -q "frodo/6\." Providers/FrodoAndroidClient.cs; then
+            echo "Douban rejects app version 6.x with code 368226; use 7.x user agents" >&2
+            exit 1
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Emby.Plugins.Douban
+          path: out/Emby.Plugins.Douban.dll
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: gh release create "${GITHUB_REF_NAME}" out/Emby.Plugins.Douban.dll --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}

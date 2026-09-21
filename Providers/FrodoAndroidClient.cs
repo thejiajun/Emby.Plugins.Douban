@@ -27,15 +27,17 @@ namespace Emby.Plugins.Douban
         /// Secret key for HMACSHA1 to generate signature.
         private const string SecretKey = "bf7dddc7c9cfe6f7";
 
+        // Douban rejects requests claiming app version 6.x with
+        // "客户端版本过低，请更新" (code 368226), so every entry here stays on 7.x.
         private static readonly string[] UserAgents = {
-            "api-client/1 com.douban.frodo/6.42.2(194) Android/22 product/shamu vendor/OPPO model/OPPO R11 Plus rom/android network/wifi platform/mobile nd/1",
-            "api-client/1 com.douban.frodo/6.42.2(194) Android/23 product/meizu_MX6 vendor/Meizu model/MX6 rom/android network/wifi platform/mobile",
-            "api-client/1 com.douban.frodo/6.32.0(180) Android/23 product/OnePlus3 vendor/One model/One rom/android network/wifi",
-            "api-client/1 com.douban.frodo/6.32.0(180) Android/25 product/Google vendor/LGE model/Nexus 5 rom/android network/wifi platform/mobile nd/1",
             "api-client/1 com.douban.frodo/7.0.1(204) Android/28 product/hammerhead vendor/Xiaomi model/MI 10 rom/android network/wifi platform/mobile nd/1",
-            "api-client/1 com.douban.frodo/6.32.0(180) Android/26 product/marlin vendor/Google model/Pixel XL rom/android network/wifi platform/mobile nd/1",
             "api-client/1 com.douban.frodo/7.0.1(204) Android/29 product/nitrogen vendor/Xiaomi model/MI MAX 3 rom/miui6 network/wifi  platform/mobile nd/1",
-            "api-client/1 com.douban.frodo/6.32.0(180) Android/22 product/R11 vendor/OPPO model/OPPO R11 rom/android network/wifi  platform/mobile nd/1",
+            "api-client/1 com.douban.frodo/7.18.0(230) Android/22 product/shamu vendor/OPPO model/OPPO R11 Plus rom/android network/wifi platform/mobile nd/1",
+            "api-client/1 com.douban.frodo/7.18.0(230) Android/23 product/meizu_MX6 vendor/Meizu model/MX6 rom/android network/wifi platform/mobile",
+            "api-client/1 com.douban.frodo/7.36.0(281) Android/23 product/OnePlus3 vendor/One model/One rom/android network/wifi",
+            "api-client/1 com.douban.frodo/7.36.0(281) Android/25 product/Google vendor/LGE model/Nexus 5 rom/android network/wifi platform/mobile nd/1",
+            "api-client/1 com.douban.frodo/7.56.0(310) Android/26 product/marlin vendor/Google model/Pixel XL rom/android network/wifi platform/mobile nd/1",
+            "api-client/1 com.douban.frodo/7.56.0(310) Android/30 product/OnePlus8 vendor/OnePlus model/IN2010 rom/android network/wifi platform/mobile nd/1",
         };
 
         private static readonly SemaphoreSlim _locker = new SemaphoreSlim(1, 1);
