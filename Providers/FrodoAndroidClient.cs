@@ -46,6 +46,15 @@ namespace Emby.Plugins.Douban
 
         private readonly Random _random = new Random();
 
+        // Once Douban refuses this client ("need_login" when the anonymous
+        // quota is spent, 368226 for an app version it no longer accepts),
+        // every search fails the same way for a while - and each one still
+        // queues behind the lock and sleeps 4-10 s first, which stalls a whole
+        // library scan. Searches stand down instead and let the next metadata
+        // source answer. Subject lookups by ID keep working meanwhile.
+        private static readonly TimeSpan PauseAfterRefusal = TimeSpan.FromMinutes(30);
+        private static DateTime _searchPausedUntil = DateTime.MinValue;
+
         private readonly HttpClient _httpClientFactory;
         private readonly IJsonSerializer _jsonSerializer;
         private readonly ILogger _logger;
@@ -148,6 +157,11 @@ namespace Emby.Plugins.Douban
 
         public async Task<Response.SearchResult> Search(string name, int count, CancellationToken cancellationToken)
         {
+            if (SearchPaused(name))
+            {
+                return EmptySearchResult();
+            }
+
             await _locker.WaitAsync(cancellationToken);
 
             // Change UserAgent for every search section.
@@ -156,6 +170,12 @@ namespace Emby.Plugins.Douban
 
             try
             {
+                // Another search may have been refused while this one waited for the lock.
+                if (SearchPaused(name))
+                {
+                    return EmptySearchResult();
+                }
+
                 _logger.LogCallerInfo($"Start to Search by name: {name}, count: {count}");
 
                 await Task.Delay(_random.Next(4000, 10000), cancellationToken);
@@ -178,6 +198,21 @@ namespace Emby.Plugins.Douban
             {
                 _locker.Release();
             }
+        }
+
+        private bool SearchPaused(string name)
+        {
+            if (DateTime.UtcNow >= _searchPausedUntil)
+            {
+                return false;
+            }
+            _logger.LogCallerInfo($"[DOUBAN] Searching paused until {_searchPausedUntil:u} after Douban refused a request; skip \"{name}\"");
+            return true;
+        }
+
+        private static Response.SearchResult EmptySearchResult()
+        {
+            return new Response.SearchResult { Items = new List<Response.SearchSubject>(), Total = 0 };
         }
 
         /// <summary>
@@ -259,6 +294,11 @@ namespace Emby.Plugins.Douban
             HttpResponseMessage response = await httpClient.GetAsync(url, cancellationToken);
             string res = await response.Content.ReadAsStringAsync();
             _logger.LogCallerInfo($"response.Content: {res}");
+            if (res.Contains("\"need_login\"") || res.Contains("368226"))
+            {
+                _searchPausedUntil = DateTime.UtcNow + PauseAfterRefusal;
+                _logger.LogCallerInfo($"[DOUBAN] Douban refused the request; searches pause until {_searchPausedUntil:u}");
+            }
             response.EnsureSuccessStatusCode();
             return response;
         }
